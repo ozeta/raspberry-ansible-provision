@@ -1,0 +1,33 @@
+- name: Setup raspi
+  gather_facts: false
+  hosts: raspis
+  tasks:
+    - name: Update all packages to the latest version
+      become: yes
+      apt:
+        upgrade: dist
+
+    - name: Check docker is installed
+      become: yes
+      stat:
+        path: "/usr/bin/docker"
+      register: is_docker_exist
+
+    - name: Install and setup docker
+      become: yes
+      when: is_docker_exist.stat.exists == False
+      shell: |
+        curl -fSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+        usermod -aG docker pi
+        rm get-docker.sh
+
+    - name: Remove useless packages from the cache
+      become: yes
+      apt:
+        autoclean: yes
+
+    - name: Remove dependencies that are no longer required
+      become: yes
+      apt:
+        autoremove: yes
