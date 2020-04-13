@@ -1,0 +1,84 @@
+- name: Setup Kubernetes
+  gather_facts: false
+  hosts: raspis
+  tasks:
+    - name: Check k3s is installed
+      become: yes
+      stat:
+        path: "/usr/local/bin/k3s"
+      register: k3s_exists
+
+#  [INFO]  Using v1.17.4+k3s1 as release
+#  [INFO]  Downloading hash https://github.com/rancher/k3s/releases/download/v1.17.4+k3s1/sha256sum-arm.txt
+#  [INFO]  Skipping binary downloaded, installed k3s matches hash
+#  [INFO]  Skipping /usr/local/bin/kubectl symlink to k3s, already exists
+#  [INFO]  Skipping /usr/local/bin/crictl symlink to k3s, already exists
+#  [INFO]  Skipping /usr/local/bin/ctr symlink to k3s, command exists in PATH at /usr/bin/ctr
+#  [INFO]  Creating killall script /usr/local/bin/k3s-killall.sh
+#  [INFO]  Creating uninstall script /usr/local/bin/k3s-uninstall.sh
+#  [INFO]  env: Creating environment file /etc/systemd/system/k3s.service.env
+#  [INFO]  systemd: Creating service file /etc/systemd/system/k3s.service
+#  [INFO]  systemd: Enabling k3s unit
+
+
+    - name: Install Helm
+      when: k3s_exists.stat.exists == False
+      shell: |
+        sudo iptables -F
+        sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+        sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+
+    - name: Unconditionally reboot the machine
+      reboot:
+
+    - name: Download and Install k3s
+      when: k3s_exists.stat.exists == False
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644 --no-deploy=traefik
+
+    - name: Fix permissions on k3s yaml
+      become: yes
+      when: k3s_exist.stat.exists == False
+      shell: |
+        sudo chmod 755 /etc/rancher/k3s/k3s.yaml
+
+    - name: Check Helm is installed
+      become: yes
+      stat:
+        path: "/usr/local/bin/helm"
+      register: helm_exists
+
+
+    - name: Install Helm
+      when: helm_exists.stat.exists == False
+      shell: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+        rm get_helm.sh
+        helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+        helm repo update
+
+
+    - name: "Add KUBECONFIG into .bashrc"
+      become: yes
+      lineinfile:
+        path: /home/pi/.bashrc
+        line: "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+        state: present
+        backup: yes
+
+    - name: Install log2ram
+      apt:
+        name: snapd
+        state: present
+
+    - name: Unconditionally reboot the machine
+      reboot:
+
+    - name: Install Helm
+      when: helm_exists.stat.exists == False
+      shell: |
+        sudo apt install snapd
+        sudo snap install k9s
+

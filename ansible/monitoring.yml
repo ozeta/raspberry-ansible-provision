@@ -1,0 +1,9 @@
+#https://www.opsdash.com/blog/disk-monitoring-linux.html
+- name: Setup raspi
+  gather_facts: false
+  hosts: raspis
+  tasks:
+  - name: Install disk stats
+    apt:
+      name: iostat iotop dstat atop ioping
+      state: present
