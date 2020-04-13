@@ -7,6 +7,34 @@
       apt:
         upgrade: dist
 
+    - name: Disable swap
+      become: yes
+      shell: |
+        sudo swapoff -a
+        sudo dphys-swapfile swapoff
+        sudo dphys-swapfile uninstall
+        sudo update-rc.d dphys-swapfile remove
+
+    #https://github.com/azlux/log2ram
+    - name: Check log2ram is installed
+      become: yes
+      stat:
+        path: "/usr/bin/docker"
+      register: is_docker_exist
+
+    - name: Install log2ram
+      become: yes
+      when: is_docker_exist.stat.exists == False
+      shell: |
+        echo "deb http://packages.azlux.fr/debian/ buster main" | sudo tee /etc/apt/sources.list.d/azlux.list
+        wget -qO - https://azlux.fr/repo.gpg.key | sudo apt-key add -
+
+    - name: Install log2ram
+      apt:
+        name: log2ram
+        state: present
+        update_cache: yes
+
     - name: Check docker is installed
       become: yes
       stat:
@@ -19,6 +47,17 @@
       shell: |
         curl -fSL https://get.docker.com -o get-docker.sh
         sh get-docker.sh
+
+    - name: Check docker has user permission
+      become: yes
+      stat:
+        path: "get-docker.sh"
+      register: docker_script_exists
+
+    - name: Install and setup docker
+      become: yes
+      when: docker_script_exists.stat.exists == True
+      shell: |
         usermod -aG docker pi
         rm get-docker.sh
 
@@ -31,3 +70,11 @@
       become: yes
       apt:
         autoremove: yes
+
+    - name: "Add nip.io host to /etc/host"
+      become: yes
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ ansible_host }}    {{ ansible_host }}.nip.io"
+        state: present
+        backup: yes
