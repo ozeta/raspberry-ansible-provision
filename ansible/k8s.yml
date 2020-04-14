@@ -35,6 +35,7 @@
       when: k3s_exists.stat.exists == False
       shell: |
         curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644 --no-deploy=traefik
+        kubectl completion bash | tee -a ~/.profile
 
     - name: Fix permissions on k3s yaml
       become: yes

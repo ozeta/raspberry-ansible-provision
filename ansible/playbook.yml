@@ -20,11 +20,11 @@
       become: yes
       stat:
         path: "/usr/bin/docker"
-      register: is_docker_exist
+      register: log2ram_exists
 
     - name: Install log2ram
       become: yes
-      when: is_docker_exist.stat.exists == False
+      when: log2ram_exists.stat.exists == False
       shell: |
         echo "deb http://packages.azlux.fr/debian/ buster main" | sudo tee /etc/apt/sources.list.d/azlux.list
         wget -qO - https://azlux.fr/repo.gpg.key | sudo apt-key add -
